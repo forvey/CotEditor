@@ -1,0 +1,160 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "New Tab": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新建页签"
+          }
+        }
+      }
+    },
+    "Close Tab": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭页签"
+          }
+        }
+      }
+    },
+    "Reopen Closed Tab": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新打开关闭的页签"
+          }
+        }
+      }
+    },
+    "Favorite Files": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏文件"
+          }
+        }
+      }
+    },
+    "Add Current File to Favorites": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏当前文件"
+          }
+        }
+      }
+    },
+    "Remove Current File from Favorites": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消收藏当前文件"
+          }
+        }
+      }
+    },
+    "No Favorite Files": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无收藏文件"
+          }
+        }
+      }
+    },
+    "Remove Favorite": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除收藏"
+          }
+        }
+      }
+    },
+    "Format / Minify JSON or SQL": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JSON / SQL 格式化与压缩"
+          }
+        }
+      }
+    },
+    "Choose JSON or SQL syntax before formatting.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先将语法设为 JSON 或 SQL，再进行格式化。"
+          }
+        }
+      }
+    },
+    "Open individual files in tabs. Folder windows are disabled in this edition.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请打开单个或多个文件，它们会追加到页签。本版本不支持文件夹窗口。"
+          }
+        }
+      }
+    },
+    "Drafts and tabs are restored automatically.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动恢复上次的草稿和页签。"
+          }
+        }
+      }
+    },
+    "Drafts are backed up separately. Use Save (⌘S) to write the original file.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草稿单独备份。按保存（⌘S）才会写入原文件。"
+          }
+        }
+      }
+    },
+    "Always use tabs in one window.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "始终在同一窗口中追加页签。"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

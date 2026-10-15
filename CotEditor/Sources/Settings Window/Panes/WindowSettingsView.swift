@@ -32,7 +32,6 @@ struct WindowSettingsView: View {
     
     @Environment(\.layoutDirection) private var layoutDirection
     
-    @AppStorage(.windowTabbing) private var windowTabbing
     @AppStorage(.windowWidth) private var windowWidth
     @AppStorage(.windowHeight) private var windowHeight
     
@@ -70,24 +69,9 @@ struct WindowSettingsView: View {
                      comment: "Omit “documents” if the text becomes too long.")
                     .accessibilityLabeledPair(role: .label, id: "windowTabbing", in: self.accessibility)
                 
-                Picker(selection: $windowTabbing) {
-                    Text(
-                        AttributedString(localized: "Respect System Setting", table: "WindowSettings", comment: "verb; menu item") +
-                        AttributedString(" (\(String(localized: NSWindow.userTabbingPreference.label)))",
-                                         attributes: .init().foregroundColor(.secondary))
-                    ).tag(-1)
-                    
-                    Divider()
-                    
-                    ForEach([NSWindow.UserTabbingPreference.manual, .inFullScreen, .always], id: \.self) {
-                        Text($0.label).tag($0.rawValue)
-                    }
-                } label: {
-                    EmptyView()
-                }
-                .accessibilityLabeledPair(role: .content, id: "windowTabbing", in: self.accessibility)
+                Text("Always use tabs in one window.", tableName: "Fork")
             }
-            
+
             GridRow {
                 Text("Window size:", tableName: "WindowSettings")
                     .accessibilityLabeledPair(role: .label, id: "windowSize", in: self.accessibility)

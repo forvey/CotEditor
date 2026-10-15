@@ -37,18 +37,12 @@ struct GeneralSettingsView: View {
     
     @Namespace private var accessibility
     
-    @AppStorage(.quitAlwaysKeepsWindows) private var quitAlwaysKeepsWindows: Bool
     @AppStorage(.noDocumentOnLaunchOption) private var noDocumentOnLaunchOption: NoDocumentOnLaunchOption
     
-    @AppStorage(.enablesAutosaveInPlace) private var enablesAutosaveInPlace: Bool
     @AppStorage(.documentConflictOption) private var documentConflictOption: DocumentConflictOption
     
-    @State private var initialEnablesAutosaveInPlace: Bool = false
     @State private var error: any Error?
     
-    @State private var isAutosaveChangeConfirmationPresented = false
-    @State private var suppressesQuitAlwaysKeepsWindowsChangeConfirmation = false
-    @State private var isQuitAlwaysKeepsWindowsChangeConfirmationPresented = false
     @State private var isSettingsExporterPresented = false
     @State private var isSettingsImporterPresented = false
     @State private var importingSettings: PortableSettingsDocument?
@@ -65,18 +59,8 @@ struct GeneralSettingsView: View {
                     .gridColumnAlignment(.trailing)
                 
                 VStack(alignment: .leading) {
-                    Toggle(.init("Reopen windows from last session", table: "GeneralSettings", comment: "verb; checkbox"), isOn: $quitAlwaysKeepsWindows)
-                        .onChange(of: self.quitAlwaysKeepsWindows) {
-                            guard !self.suppressesQuitAlwaysKeepsWindowsChangeConfirmation else { return }
-                            
-                            self.isQuitAlwaysKeepsWindowsChangeConfirmationPresented = true
-                            self.suppressesQuitAlwaysKeepsWindowsChangeConfirmation = true
-                        }
-                        .confirmationDialog(.init("NextSessionApplicationConfirmation.title", defaultValue: "The change will be applied first on the next launch.", table: "GeneralSettings"), isPresented: $isQuitAlwaysKeepsWindowsChangeConfirmationPresented) {
-                        } message: {
-                            Text(.init("NextSessionApplicationConfirmation.nextAfterNext.message", defaultValue: "The app’s behavior will change from the next launch after that one.", table: "GeneralSettings"))
-                        }
-                    
+                    Text("Drafts and tabs are restored automatically.", tableName: "Fork")
+
                     Text("When nothing else is open:", tableName: "GeneralSettings")
                         .accessibilityLabeledPair(role: .label, id: "noDocumentOnLaunchOption", in: self.accessibility)
                     Picker(selection: $noDocumentOnLaunchOption) {
@@ -98,36 +82,9 @@ struct GeneralSettingsView: View {
                     .gridColumnAlignment(.trailing)
                 
                 VStack(alignment: .leading) {
-                    Toggle(.init("Enable Auto Save with Versions", table: "GeneralSettings", comment: "verb; checkbox"), isOn: $enablesAutosaveInPlace)
-                        .onChange(of: self.enablesAutosaveInPlace) { _, newValue in
-                            if newValue != self.initialEnablesAutosaveInPlace {
-                                self.isAutosaveChangeConfirmationPresented = true
-                            }
-                        }
-                        .onAppear {
-                            self.initialEnablesAutosaveInPlace = self.enablesAutosaveInPlace
-                        }
-                        .confirmationDialog(.init("NextSessionApplicationConfirmation.title", defaultValue: "The change will be applied first on the next launch.", table: "GeneralSettings"), isPresented: $isAutosaveChangeConfirmationPresented) {
-                            Button(.init("Restart Now", table: "GeneralSettings", comment: "verb; button")) {
-                                (NSApp.delegate as? AppDelegate)?.needsRelaunch = true
-                                NSApp.terminate(self)
-                            }
-                            Button(.init("Later", table: "GeneralSettings", comment: "button")) {
-                                // do nothing
-                            }
-                            Button(role: .cancel) {
-                                self.enablesAutosaveInPlace.toggle()
-                            }
-                        } message: {
-                            Text(.init("NextSessionApplicationConfirmation.message", defaultValue: "Do you want to restart CotEditor now?", table: "GeneralSettings"))
-                        }
-                    
-                    Text("A system feature that automatically overwrites your files while editing. Even if turned off, CotEditor covertly creates a backup in case it unexpectedly quits.", tableName: "GeneralSettings")
+                    Text("Drafts are backed up separately. Use Save (⌘S) to write the original file.", tableName: "Fork")
                         .foregroundStyle(.secondary)
-                        .controlSize(.small)
-                        .lineLimit(10)
                         .fixedSize(horizontal: false, vertical: true)
-                        .padding(.leading, 22)
                 }
             }
             

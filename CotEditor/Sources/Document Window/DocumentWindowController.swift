@@ -40,6 +40,13 @@ enum SyntaxMenuTag: Int {
 
 
 final class DocumentWindowController: NSWindowController, NSWindowDelegate {
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+
+        guard self === DraftWorkspace.shared.windowController, !DraftWorkspace.shared.isTerminating else { return true }
+        NSApp.terminate(sender)
+        return false
+    }
     
     // MARK: Public Properties
     

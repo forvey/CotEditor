@@ -128,6 +128,7 @@ extension Logger {
     // MARK: Application Delegate
     
     func applicationWillFinishLaunching(_ notification: Notification) {
+        NSWindow.allowsAutomaticWindowTabbing = false
         
         if Document.autosavesInPlace {
             ProcessInfo.processInfo.enableSuddenTermination()
@@ -171,6 +172,7 @@ extension Logger {
         
         RemoteEditingController.shared.start()
         KeyBindingManager.shared.applyShortcutsToMainMenu()
+        ForkMenus.shared.install()
         
         NSApp.servicesProvider = ServicesProvider()
         NSApp.registerServicesMenuSendTypes([.fileURL], returnTypes: [])
@@ -192,6 +194,15 @@ extension Logger {
     }
     
     
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+
+        DraftWorkspace.shared.prepareToTerminate() ? .terminateNow : .terminateCancel
+    }
+
+    func application(_ app: NSApplication, shouldSaveSecureApplicationState coder: NSCoder) -> Bool { false }
+    func application(_ app: NSApplication, shouldRestoreSecureApplicationState coder: NSCoder) -> Bool { false }
+
+
     func applicationWillTerminate(_ notification: Notification) {
         
         if self.needsRelaunch {

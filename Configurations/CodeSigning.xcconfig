@@ -26,10 +26,5 @@
 // Configuration settings file format documentation can be found at:
 // https://help.apple.com/xcode/#/dev745c5c974
 
-// Use default code signing for application release.
-CODE_SIGN_IDENTITY = Apple Development
-CODE_SIGN_STYLE = Automatic
-DEVELOPMENT_TEAM = HT3Z3A72WZ
-
-// Uncomment the following line to override these settings for ad-hoc local development.
-//#include "CodeSigning-AdHoc.xcconfig"
+// This personal fork builds locally without the upstream development team's certificate.
+#include "CodeSigning-AdHoc.xcconfig"

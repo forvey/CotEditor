@@ -38,6 +38,7 @@ import LineEnding
 import StringUtils
 import SyntaxFormat
 import URLUtils
+import CustomizationCore
 
 extension NSTextView: EditorCounter.Source { }
 
@@ -211,15 +212,10 @@ extension NSTextView: EditorCounter.Source { }
     
     // MARK: Document Methods
     
-    override nonisolated static var autosavesInPlace: Bool {
-        
-        // avoid changing the value while the application is running
-        struct InitialValue { static let autosavesInPlace = UserDefaults.standard[.enablesAutosaveInPlace] }
-        
-        return InitialValue.autosavesInPlace
-    }
-    
-    
+    override nonisolated static var autosavesInPlace: Bool { false }
+    override nonisolated static var autosavesDrafts: Bool { false }
+
+
     override static func canConcurrentlyReadDocuments(ofType: String) -> Bool {
         
         true
@@ -238,37 +234,19 @@ extension NSTextView: EditorCounter.Source { }
             Task { @MainActor in
                 self.synchronizeFileType()
                 NotificationCenter.default.post(NSDocument.DidChangeFileURLMessage(), subject: self)
+                DraftWorkspace.shared.documentDidChange(self, fileURLChanged: true)
             }
         }
     }
     
     
     override func makeWindowControllers() {
-        
-        // -> The window controller already exists either when:
-        //   - The window of a transient document was reused.
-        //   - The document is a member of a DirectoryDocument.
-        if self.windowController == nil {
-            let windowController = DocumentWindowController(document: self)
-            self.addWindowController(windowController)
-            
-            // avoid showing "edited" indicator in the close button when the content is empty
-            if !Self.autosavesInPlace {
-                self.textStorageObserver = NotificationCenter.default
-                    .publisher(for: NSTextStorage.didProcessEditingNotification, object: self.textStorage)
-                    .map { $0.object as! NSTextStorage }
-                    .map(\.string.isEmpty)
-                    .removeDuplicates()
-                    .assign(to: \.isWhitePaper, on: windowController)
-            }
-            
-            NotificationCenter.default.post(DidMakeWindowMessage(), subject: self)
-        }
-        
+
+        DraftWorkspace.shared.attach(self)
         self.applyContentToWindow()
     }
-    
-    
+
+
     override func addWindowController(_ windowController: NSWindowController) {
         
         assert(windowController is DocumentWindowController)
@@ -291,13 +269,12 @@ extension NSTextView: EditorCounter.Source { }
     
     
     override func showWindows() {
-        
-        super.showWindows()
-        
-        self.windowController?.showWindow(nil)
+
+        DraftWorkspace.shared.select(self)
+        DraftWorkspace.shared.windowController?.showWindow(nil)
     }
-    
-    
+
+
     override var windowForSheet: NSWindow? {
         
         super.windowForSheet ?? self.windowController?.window
@@ -610,75 +587,20 @@ extension NSTextView: EditorCounter.Source { }
     
     
     override func canClose(withDelegate delegate: Any, shouldClose shouldCloseSelector: Selector?, contextInfo: UnsafeMutableRawPointer?) {
-        
-        // suppress save dialog if the content is empty and not saved explicitly
-        suppression: if self.isDraft || self.fileURL == nil, self.textStorage.string.isEmpty {
-            // delete autosaved file if exists
-            // -> An engineer at Apple told there is no need to wrap the file access here with NSFileCoordinator (2023-06).
-            if let fileURL = self.fileURL {
-                do {
-                    try FileManager.default.removeItem(at: fileURL)  // FILE_ACCESS
-                } catch {
-                    Logger.app.error("Failed empty file deletion: \(error)")
-                    break suppression
-                }
-            }
-            
-            // tell the document can be closed; then, no need to invoke super anymore
+
+        do {
+            try DraftWorkspace.shared.save()
             DelegateContext(delegate: delegate, selector: shouldCloseSelector, contextInfo: contextInfo).perform(from: self, flag: true)
-            return
+        } catch {
+            self.presentError(error)
+            DelegateContext(delegate: delegate, selector: shouldCloseSelector, contextInfo: contextInfo).perform(from: self, flag: false)
         }
-        
-        if self.hasUnautosavedChanges, !self.allowsLossySaving, !self.canBeConverted() {
-            let alert = NSAlert()
-            alert.messageText = String(
-                localized: "DocumentClosingAlert.message",
-                defaultValue: "Do you want to save the changes made to the document “\(self.displayName!)”?",
-                comment: "Refer the same expression in AppKit.framework by Apple."
-            ) + "\n" + LossyEncodingError(encoding: self.fileEncoding).localizedDescription
-            alert.informativeText = String(
-                localized: "DocumentClosingAlert.lossyEncoding.informativeText",
-                defaultValue: "Your changes will be lost if you don’t save them. Incompatible characters are either substituted or removed in saving.",
-                comment: "For the first sentence, refer the same expression in AppKit.framework by Apple. For the latter one, refer the DocumentSavingError.lossyEncoding.recoverySuggestion.")
-            alert.addButton(withTitle: String(
-                localized: "DocumentSavingError.lossyEncoding.recoveryOption.save",
-                defaultValue: "Save Available Text"))
-            alert.addButton(withTitle: String(
-                localized: "DocumentClosingAlert.button.dontSave",
-                defaultValue: "Don’t Save",
-                comment: "Refer the same expression in AppKit.framework by Apple."))
-            alert.addButton(withTitle: String(localized: .cancel))
-            alert.buttons[1].hasDestructiveAction = true
-            alert.window.identifier = .contentDependentAlert
-            
-            Task {
-                let returnCode = if let window = self.windowForSheet {
-                    await alert.beginSheetModal(for: window)
-                } else {
-                    alert.runModal()
-                }
-                
-                switch returnCode {
-                    case .alertFirstButtonReturn:  // Save
-                        self.allowsLossySaving = true
-                        super.canClose(withDelegate: delegate, shouldClose: shouldCloseSelector, contextInfo: contextInfo)
-                    case .alertSecondButtonReturn:  // Don't Save
-                        // tell the document can be closed without saving
-                        DelegateContext(delegate: delegate, selector: shouldCloseSelector, contextInfo: contextInfo)
-                            .perform(from: self, flag: true)
-                    default:  // Cancel (or the sheet was dismissed programmatically)
-                        DelegateContext(delegate: delegate, selector: shouldCloseSelector, contextInfo: contextInfo)
-                            .perform(from: self, flag: false)
-                }
-            }
-            return
-        }
-        
-        super.canClose(withDelegate: delegate, shouldClose: shouldCloseSelector, contextInfo: contextInfo)
     }
-    
-    
+
+
     override func close() {
+
+        guard DraftWorkspace.shared.prepareToClose(self) else { return }
         
         super.close()
         
@@ -781,6 +703,7 @@ extension NSTextView: EditorCounter.Source { }
         
         DispatchQueue.syncOnMain {
             NotificationCenter.default.post(DidUpdateChangeMessage(), subject: self)
+            DraftWorkspace.shared.documentDidChange(self)
         }
     }
     
@@ -795,6 +718,7 @@ extension NSTextView: EditorCounter.Source { }
         
         DispatchQueue.syncOnMain {
             NotificationCenter.default.post(DidUpdateChangeMessage(), subject: self)
+            DraftWorkspace.shared.documentDidChange(self)
         }
     }
     
@@ -977,10 +901,21 @@ extension NSTextView: EditorCounter.Source { }
     /// The view controller represents document.
     var viewController: DocumentViewController? {
         
-        (self.windowController?.contentViewController as? WindowContentViewController)?.documentViewController
+        (self.windowController?.contentViewController as? WindowContentViewController)?.viewController(for: self)
     }
     
     
+    func restoreDraft(_ draft: Draft) {
+
+        self.textStorage.setAttributedString(NSAttributedString(string: draft.text))
+        self.fileEncoding = FileEncoding(encoding: String.Encoding(rawValue: draft.encoding), withUTF8BOM: draft.utf8BOM)
+        self.lineEnding = LineEnding.allCases.first { $0.string == draft.lineEnding } ?? .lf
+        self.setSyntax(name: draft.syntax)
+        self.isTransient = false
+        self.updateChangeCount(draft.isEdited || (self.fileURL == nil && !draft.text.isEmpty) ? .changeDone : .changeCleared)
+    }
+
+
     /// The text view currently focused.
     var textView: NSTextView? {
         

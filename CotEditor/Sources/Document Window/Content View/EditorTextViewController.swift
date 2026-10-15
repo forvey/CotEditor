@@ -107,6 +107,7 @@ final class EditorTextViewController: NSViewController, NSServicesMenuRequestor,
             textStorage: self.document.textStorage,
             lineEndingScanner: self.document.lineEndingScanner
         )
+        textView.structuredSyntax = { [weak document = self.document] in document?.syntaxName ?? "" }
         textView.delegate = self
         textView.usesRuler = false
         textView.accessibilityHelpProvider = { [weak self] in self?.editorAccessibilityHelp }

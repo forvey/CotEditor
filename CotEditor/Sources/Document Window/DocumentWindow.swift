@@ -102,11 +102,29 @@ final class DocumentWindow: NSWindow {
     }
     
     
+    override func performClose(_ sender: Any?) {
+
+        if let button = sender as? NSButton, button === self.standardWindowButton(.closeButton) {
+            NSApp.terminate(sender)
+        } else {
+            DraftWorkspace.shared.closeTab(sender)
+        }
+    }
+
+    override func selectNextTab(_ sender: Any?) { DraftWorkspace.shared.stepTab(1) }
+    override func selectPreviousTab(_ sender: Any?) { DraftWorkspace.shared.stepTab(-1) }
+    override func moveTabToNewWindow(_ sender: Any?) { }
+    override func toggleTabBar(_ sender: Any?) { }
+
+
     // MARK: Actions
     
     override func validateUserInterfaceItem(_ item: any NSValidatedUserInterfaceItem) -> Bool {
         
         switch item.action {
+            case #selector(moveTabToNewWindow(_:)), #selector(toggleTabBar(_:)), #selector(toggleTabOverview(_:)):
+                return false
+
             case #selector(toggleKeepOnTop):
                 (item as? any StatableItem)?.state = self.isFloating ? .on : .off
                 
@@ -161,9 +179,21 @@ extension DocumentWindow {
     
     
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
+
+        if event.modifierFlags.intersection([.command, .option, .control, .shift]) == [.command, .option],
+           event.charactersIgnoringModifiers?.lowercased() == "l", let textView = self.firstResponder as? EditorTextView {
+            textView.toggleStructuredLayout(nil)
+            return true
+        }
         
         guard !super.performKeyEquivalent(with: event) else { return true }
         
+        if let shortcut = Shortcut(keyDownEvent: event), shortcut.modifiers == [.command],
+           let number = Int(shortcut.keyEquivalent), (1...9).contains(number) {
+            DraftWorkspace.shared.selectTab(at: number == 9 ? Int.max : number - 1)
+            return true
+        }
+
         // select tabbed window with `⌘-number` (`⌘9` for the last tab)
         if
             self.tabbingMode != .disallowed,

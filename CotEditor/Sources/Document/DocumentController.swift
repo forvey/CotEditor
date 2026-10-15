@@ -32,6 +32,7 @@ import Defaults
 import RMate
 import StringUtils
 import URLUtils
+import CustomizationCore
 
 protocol AdditionalDocumentPreparing: NSDocument {
     
@@ -61,7 +62,7 @@ protocol AdditionalDocumentPreparing: NSDocument {
         
         super.init()
         
-        self.autosavingDelay = 5.0
+        self.autosavingDelay = 0
         
         // observe the frontmost syntax change
         self.mainWindowObserver = NSApp.publisher(for: \.mainWindow)
@@ -88,9 +89,21 @@ protocol AdditionalDocumentPreparing: NSDocument {
     }
     
     
+    override func reviewUnsavedDocuments(withAlertTitle title: String?, cancellable: Bool, delegate: Any?, didReviewAllSelector: Selector?, contextInfo: UnsafeMutableRawPointer?) {
+
+        let ready = DraftWorkspace.shared.prepareToTerminate()
+        DelegateContext(delegate: delegate, selector: didReviewAllSelector, contextInfo: contextInfo).perform(from: self, flag: ready)
+    }
+
+
+    override var currentDocument: NSDocument? { DraftWorkspace.shared.selected ?? super.currentDocument }
+
+
     // MARK: Document Controller Methods
     
     override func openDocument(withContentsOf url: URL, display displayDocument: Bool) async throws -> (NSDocument, Bool) {
+
+        DraftWorkspace.shared.restoreIfNeeded()
         
         defer {
             // remove options selected in the open panel after the document opening flow finishes
@@ -99,7 +112,7 @@ protocol AdditionalDocumentPreparing: NSDocument {
         
         // do nothing for DirectoryDocument
         if try url.isDirectory {
-            return try await super.openDocument(withContentsOf: url, display: displayDocument)
+            throw ContentError.invalid(String(localized: "Open individual files in tabs. Folder windows are disabled in this edition.", table: "Fork"))
         }
         
         // obtain transient document if exists
@@ -188,7 +201,7 @@ protocol AdditionalDocumentPreparing: NSDocument {
             
             // make document transient when it is an open or reopen event
             if self.documents.count == 1, NSAppleEventManager.shared().isOpenEvent {
-                document.isTransient = true
+                document.isTransient = false
             }
         }
         
@@ -197,6 +210,10 @@ protocol AdditionalDocumentPreparing: NSDocument {
     
     
     override func makeDocument(withContentsOf url: URL, ofType typeName: String) throws -> NSDocument {
+
+        if try url.isDirectory {
+            throw ContentError.invalid(String(localized: "Open individual files in tabs. Folder windows are disabled in this edition.", table: "Fork"))
+        }
         
         // [caution] This method may be called from a background thread due to concurrent-opening.
         
@@ -251,7 +268,7 @@ protocol AdditionalDocumentPreparing: NSDocument {
         accessoryView.sizingOptions = .intrinsicContentSize
         
         openPanel.delegate = model
-        openPanel.canChooseDirectories = true
+        openPanel.canChooseDirectories = false
         openPanel.accessoryView = accessoryView
         openPanel.isAccessoryViewDisclosed = true
         
@@ -310,7 +327,7 @@ protocol AdditionalDocumentPreparing: NSDocument {
         
         switch item.action {
             case #selector(newDocumentAsTab):
-                return self.currentDocument is Document
+                return true
             default:
                 break
         }
@@ -377,6 +394,8 @@ protocol AdditionalDocumentPreparing: NSDocument {
     
     /// Performs the user-defined action on the open/reopen event.
     func performOnLaunchAction() {
+
+        if DraftWorkspace.shared.restoreIfNeeded() { return }
         
         switch UserDefaults.standard[.noDocumentOnLaunchOption] {
             case .untitledDocument:
@@ -395,9 +414,7 @@ protocol AdditionalDocumentPreparing: NSDocument {
     /// Opens a new document as a new window.
     @IBAction func newDocumentAsWindow(_ sender: Any?) {
         
-        DocumentWindow.tabbingPreference = .manual
         self.newDocument(sender)
-        DocumentWindow.tabbingPreference = nil
     }
     
     
@@ -413,19 +430,9 @@ protocol AdditionalDocumentPreparing: NSDocument {
     // MARK: Private Methods
     
     /// Transient document to be replaced or `nil`.
-    private var transientDocument: Document? {
-        
-        guard
-            self.documents.count == 1,
-            let document = self.documents.first as? Document,
-            document.isTransient,
-            document.textStorage.length == 0
-        else { return nil }
-        
-        return document
-    }
-    
-    
+    private var transientDocument: Document? { nil }
+
+
     /// Replaces window controllers in documents.
     ///
     /// - Parameters:

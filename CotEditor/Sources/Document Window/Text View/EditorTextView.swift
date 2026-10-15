@@ -48,6 +48,10 @@ extension NotificationCenter.MessageIdentifier where Self == NotificationCenter.
 // MARK: -
 
 final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEditing {
+    var structuredSyntax: (() -> String)?
+    lazy var sqlCompanion = SQLCompanion(textView: self)
+    var structuredLayoutTask: Task<Void, Never>?
+
     
     @MainActor protocol Delegate: AnyObject {
         
@@ -421,6 +425,7 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
     
     override func mouseDown(with event: NSEvent) {
         
+        self.sqlCompanion.clear()
         self.mouseDownPoint = self.convert(event.locationInWindow, from: nil)
         self.isPerformingRectangularSelection = event.modifierFlags.contains(.option)
         self.needsUpdateInsertionIndicators = true  // to draw dummy indicator for proper one while selecting
@@ -455,6 +460,7 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
         }
         
         self.isPerformingRectangularSelection = false
+        if event.clickCount == 2, !isDragged { self.sqlCompanion.doubleClick(at: self.selectedRange.location) }
     }
     
     
@@ -473,6 +479,8 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
     
     
     override func didChangeText() {
+
+        self.sqlCompanion.clear()
         
         super.didChangeText()
         
@@ -989,6 +997,7 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
             self.drawCurrentLine(range: range, in: rect)
         }
         
+        self.sqlCompanion.draw(in: rect)
         self.drawRoundedBackground(range: range, in: rect)
     }
     
@@ -1155,6 +1164,9 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
     override func validateUserInterfaceItem(_ item: any NSValidatedUserInterfaceItem) -> Bool {
         
         switch item.action {
+            case #selector(toggleStructuredLayout(_:)):
+                return self.isEditable && !self.string.isEmpty
+
             case #selector(pasteAsIs):
                 return self.isEditable && NSPasteboard.general.canReadObject(forClasses: [NSString.self], options: nil)
             

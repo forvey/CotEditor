@@ -33,6 +33,7 @@ final class ContentViewController: NSViewController {
     var document: DataDocument?  { didSet { self.updateDocument(from: oldValue) } }
     
     private(set) var hostedViewController: NSViewController
+    private var documentViews: [ObjectIdentifier: NSViewController] = [:]
     
     
     // MARK: Lifecycle
@@ -44,6 +45,7 @@ final class ContentViewController: NSViewController {
         
         super.init(nibName: nil, bundle: nil)
         
+        if let document { self.documentViews[ObjectIdentifier(document)] = self.hostedViewController }
         self.addChild(self.hostedViewController)
     }
     
@@ -64,6 +66,16 @@ final class ContentViewController: NSViewController {
     }
     
     
+    func viewController(for document: Document) -> DocumentViewController? {
+
+        self.documentViews[ObjectIdentifier(document)] as? DocumentViewController
+    }
+
+    func forget(_ document: Document) {
+
+        self.documentViews.removeValue(forKey: ObjectIdentifier(document))
+    }
+
     // MARK: Private Methods
     
     /// Updates the hosted view controller when the document changes.
@@ -78,7 +90,14 @@ final class ContentViewController: NSViewController {
         self.hostedViewController.viewIfLoaded?.removeFromSuperview()
         self.hostedViewController.removeFromParent()
         
-        self.hostedViewController = Self.viewController(document: self.document)
+        if let document = self.document {
+            let key = ObjectIdentifier(document)
+            let controller = self.documentViews[key] ?? Self.viewController(document: document)
+            self.documentViews[key] = controller
+            self.hostedViewController = controller
+        } else {
+            self.hostedViewController = Self.viewController(document: nil)
+        }
         self.addChild(self.hostedViewController)
         self.viewIfLoaded?.embedSubview(self.hostedViewController.view)
     }

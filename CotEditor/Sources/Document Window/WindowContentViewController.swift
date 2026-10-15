@@ -37,6 +37,16 @@ final class WindowContentViewController: NSSplitViewController, NSToolbarItemVal
     var documentViewController: DocumentViewController?  { self.contentViewController.hostedViewController as? DocumentViewController }
     
     
+    func viewController(for document: Document) -> DocumentViewController? {
+
+        self.contentViewController.viewController(for: document)
+    }
+
+    func forget(_ document: Document) {
+
+        self.contentViewController.forget(document)
+    }
+
     // MARK: Private Properties
     
     private let directoryDocument: DirectoryDocument?

@@ -160,6 +160,9 @@
       ],
       "package-product-members": [
         {
+          "product-name": "CustomizationCore",
+          "build-phase": { "build-phase": "frameworks" },
+        }, {
           "product-name": "EditorCore",
           "build-phase": { "build-phase": "frameworks" },
         }, {
@@ -193,7 +196,7 @@
         "INFOPLIST_KEY_NSHumanReadableCopyright": "© 2005-2009 nakamuxu\n© 2011, 2014 usami-k\n© 2013-2026 1024jp",
         "INFOPLIST_KEY_NSMainStoryboardFile": "Main",
         "MARKETING_VERSION": "7.2.0-alpha",
-        "PRODUCT_BUNDLE_IDENTIFIER": "com.coteditor.CotEditor",
+        "PRODUCT_BUNDLE_IDENTIFIER": "com.forvey.CotEditor",
         "PRODUCT_NAME": "CotEditor",
         "SWIFT_STRICT_CONCURRENCY": "complete",
         "SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE": "YES",
