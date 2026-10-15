@@ -26,6 +26,8 @@ xcodebuild test -scheme CotEditor CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DE
 
 独立模块覆盖格式转换、SQL 词法与字段映射、备份损坏恢复、写入失败和收藏持久化。应用测试 `NativeEditorToolsTests` 覆盖格式化撤销、异步结果过期及页签切换后撤销。完整应用及这些应用测试必须在装有 Xcode 的环境运行；上游 CI 的 `xcode-27` runner 标签也需要可用的 runner。
 
+2026-10-15 已在 macOS 27、Xcode 27.0（27A266a）、Apple Silicon 上完成验证：独立模块 8 项测试和 `NativeEditorToolsTests` 3 项应用测试全部通过。构建使用默认 SwiftPM 缓存目录；本机仍将 Command Line Tools 设为默认时，可在命令前加 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`。Release 版本可用 `xcodebuild build -scheme CotEditor -configuration Release -destination 'platform=macOS,arch=arm64' -skipPackageUpdates -skipPackagePluginValidation` 构建。
+
 人工验收应使用临时文件：单文件时＋可见；连续打开文件只有一个编辑器窗口；格式化后撤销及切换页签后撤销；全屏双击字段/值显示气泡且文本不变；收藏后重启仍可打开；未保存草稿退出重启恢复；磁盘写入错误时退出被取消。
 
 ## 第三方代码

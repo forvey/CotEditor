@@ -2,6 +2,8 @@
 import AppKit
 import Combine
 import CustomizationCore
+import FileEncoding
+import LineEnding
 
 /// One physical editor window. Each tab retains its own text view and undo manager.
 @MainActor final class DraftWorkspace: NSObject {

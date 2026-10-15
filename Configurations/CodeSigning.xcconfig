@@ -27,4 +27,9 @@
 // https://help.apple.com/xcode/#/dev745c5c974
 
 // This personal fork builds locally without the upstream development team's certificate.
-#include "CodeSigning-AdHoc.xcconfig"
+// Only the app's CotEditor.xcconfig selects entitlements; test bundles have none.
+CODE_SIGN_ENTITLEMENTS_SUFFIX = -AdHoc
+CODE_SIGN_IDENTITY = -
+CODE_SIGN_STYLE = Manual
+DEVELOPMENT_TEAM =
+PROVISIONING_PROFILE_SPECIFIER =

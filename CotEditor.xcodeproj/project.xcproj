@@ -32,6 +32,10 @@
     ],
   },
   "packages": [
+    { "kind": "local", "path": "Packages/EditorCore" },
+    { "kind": "local", "path": "Packages/MacUI" },
+    { "kind": "local", "path": "Packages/Syntax" },
+    { "kind": "local", "path": "Packages/CustomizationCore" },
     {
       "kind": "remote",
       "repository": "https://github.com/1024jp/WFColorCode",
@@ -123,7 +127,7 @@
         { "name": "Release-Sparkle", "file": { "anchor": "Configurations", "relative-path": "CotEditor-Sparkle.xcconfig" } },
       ],
       "dependencies": [
-        { "kind": "package", "product-name": "SyntaxMapBuilder" },
+        { "kind": "package", "package": "Syntax", "product-name": "SyntaxMapBuilder" },
         { "kind": "package", "package": "SwiftLintPlugins", "product-name": "SwiftLintBuildToolPlugin", "product-type": "build-tool-plugin" },
       ],
       "build-phases": [
@@ -161,15 +165,19 @@
       "package-product-members": [
         {
           "product-name": "CustomizationCore",
+          "package": "CustomizationCore",
           "build-phase": { "build-phase": "frameworks" },
         }, {
           "product-name": "EditorCore",
+          "package": "EditorCore",
           "build-phase": { "build-phase": "frameworks" },
         }, {
           "product-name": "MacUI",
+          "package": "MacUI",
           "build-phase": { "build-phase": "frameworks" },
         }, {
           "product-name": "Syntax",
+          "package": "Syntax",
           "build-phase": { "build-phase": "frameworks" },
         }, {
           "package": "Sparkle",
