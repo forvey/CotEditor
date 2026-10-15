@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import AppKit
 import CustomizationCore
+import SwiftUI
 
 /// A native, transient popover. No text replacement, global mouse hook or accessibility API.
-@MainActor final class SQLCompanion {
+@MainActor final class SQLCompanion: NSObject, NSPopoverDelegate {
     private weak var textView: EditorTextView?
     private var popover: NSPopover?
     private var ranges: [NSRange] = []
@@ -12,6 +13,7 @@ import CustomizationCore
     init(textView: EditorTextView) {
 
         self.textView = textView
+        super.init()
     }
 
     func clear() {
@@ -19,6 +21,12 @@ import CustomizationCore
         self.query?.cancel()
         self.popover?.close()
         self.popover = nil
+        self.ranges = []
+        self.textView?.needsDisplay = true
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+
         self.ranges = []
         self.textView?.needsDisplay = true
     }
@@ -51,26 +59,28 @@ import CustomizationCore
         guard let textView = self.textView, let container = textView.textContainer, let layout = textView.layoutManager,
               let window = textView.window, window.isVisible else { return }
         self.popover?.close()
-        let label = NSTextView()
-        label.isEditable = false
-        label.isSelectable = true
-        label.drawsBackground = false
-        label.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
-        label.string = message
-        label.textContainerInset = NSSize(width: 10, height: 10)
-        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 420, height: min(260, max(70, 30 + message.components(separatedBy: "\n").count * 20))))
-        scroll.drawsBackground = false
-        scroll.hasVerticalScroller = true
-        scroll.documentView = label
-        label.frame.size = scroll.contentSize
-        label.isVerticallyResizable = true
-        label.textContainer?.widthTracksTextView = true
-        label.autoresizingMask = [.width]
-        let controller = NSViewController()
-        controller.view = scroll
+        let font = NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        let maximumWidth = min(500, max(100, textView.visibleRect.width - 32))
+        let naturalWidth = message.components(separatedBy: "\n").map { ($0 as NSString).size(withAttributes: [.font: font]).width }.max() ?? 0
+        let width = min(maximumWidth, max(64, ceil(naturalWidth) + 24))
+        let textBounds = (message as NSString).boundingRect(with: NSSize(width: width - 24, height: .greatestFiniteMagnitude),
+                                                          options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: [.font: font])
+        let height = min(260, max(40, ceil(textBounds.height) + 24))
+        let controller = NSHostingController(rootView: ScrollView {
+            Text(message)
+                .font(.system(size: NSFont.systemFontSize, design: .monospaced))
+                .foregroundStyle(.primary)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+        }.frame(width: width, height: height))
         let popover = NSPopover()
         popover.behavior = .transient
+        popover.delegate = self
+        popover.animates = false
         popover.contentViewController = controller
+        popover.contentSize = NSSize(width: width, height: height)
         self.popover = popover
         let safeRange = NSRange(location: min(range.location, textView.string.utf16.count), length: range.location < textView.string.utf16.count ? min(range.length, 1) : 0)
         let glyphs = layout.glyphRange(forCharacterRange: safeRange, actualCharacterRange: nil)
@@ -79,9 +89,11 @@ import CustomizationCore
         anchor.origin.y += textView.textContainerOrigin.y
         anchor.size.width = max(anchor.width, 2)
         anchor.size.height = max(anchor.height, textView.font?.pointSize ?? 14)
+        let selections = textView.selectedRanges
         popover.show(relativeTo: anchor, of: textView, preferredEdge: .maxY)
         // Keep typing, selection and keyboard shortcuts in the editor.
         window.makeFirstResponder(textView)
+        textView.selectedRanges = selections
     }
 
     func draw(in dirtyRect: NSRect) {

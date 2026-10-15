@@ -1248,7 +1248,7 @@ extension NSTextView: EditorCounter.Source { }
     ///
     /// - Parameter saveOperation: The save operation.
     /// - Returns: The file attributes.
-    private func additionalFileAttributes(for saveOperation: NSDocument.SaveOperationType) -> [String: any Sendable] {
+    private final func additionalFileAttributes(for saveOperation: NSDocument.SaveOperationType) -> [String: any Sendable] {
         
         var attributes: [String: any Sendable] = [:]
         

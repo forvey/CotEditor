@@ -290,38 +290,18 @@ import LineEnding
 
 @MainActor private final class WorkspaceTabBar: NSTitlebarAccessoryViewController {
     private unowned let workspace: DraftWorkspace
-    private let stack = NSStackView()
+    private let strip: WorkspaceTabStrip
 
     init(workspace: DraftWorkspace) {
 
         self.workspace = workspace
+        let plus = NSButton(image: NSImage(systemSymbolName: "plus", accessibilityDescription: String(localized: "New Tab", table: "Fork"))!, target: workspace, action: #selector(DraftWorkspace.newTab))
+        plus.isBordered = false
+        plus.toolTip = String(localized: "New Tab", table: "Fork") + " (⌘N)"
+        self.strip = WorkspaceTabStrip(plus: plus)
         super.init(nibName: nil, bundle: nil)
         self.layoutAttribute = .bottom
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 640, height: 34))
-        container.autoresizingMask = [.width]
-        self.view = container
-        let scroll = NSScrollView()
-        scroll.drawsBackground = false
-        scroll.hasHorizontalScroller = true
-        scroll.autohidesScrollers = true
-        scroll.scrollerStyle = .overlay
-        self.stack.orientation = .horizontal
-        self.stack.spacing = 4
-        scroll.documentView = self.stack
-        let plus = NSButton(image: NSImage(systemSymbolName: "plus", accessibilityDescription: String(localized: "New Tab", table: "Fork"))!, target: workspace, action: #selector(DraftWorkspace.newTab))
-        plus.bezelStyle = .accessoryBarAction
-        plus.toolTip = String(localized: "New Tab", table: "Fork") + " (⌘N)"
-        for item in [scroll, plus] { item.translatesAutoresizingMaskIntoConstraints = false; container.addSubview(item) }
-        self.stack.setFrameSize(NSSize(width: 600, height: 30))
-        NSLayoutConstraint.activate([
-            scroll.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 6),
-            scroll.topAnchor.constraint(equalTo: container.topAnchor, constant: 2),
-            scroll.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -2),
-            scroll.trailingAnchor.constraint(equalTo: plus.leadingAnchor, constant: -6),
-            plus.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8),
-            plus.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            plus.widthAnchor.constraint(equalToConstant: 28),
-        ])
+        self.view = self.strip
     }
 
     @available(*, unavailable)
@@ -329,24 +309,24 @@ import LineEnding
 
     func reload() {
 
-        self.stack.arrangedSubviews.forEach { self.stack.removeArrangedSubview($0); $0.removeFromSuperview() }
+        let stack = self.strip.stack
+        stack.arrangedSubviews.forEach { stack.removeArrangedSubview($0); $0.removeFromSuperview() }
         for (index, document) in self.workspace.documents.enumerated() {
             let title = (document.isDocumentEdited ? "• " : "") + (document.displayName ?? "Untitled")
             let button = NSButton(title: title, target: self, action: #selector(self.selectTab))
             button.tag = index
-            button.setButtonType(.pushOnPushOff)
-            button.state = document === self.workspace.selected ? .on : .off
+            button.isBordered = false
+            button.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+            button.cell?.lineBreakMode = .byTruncatingMiddle
             button.toolTip = document.fileURL?.path ?? document.displayName
-            button.bezelStyle = .accessoryBarAction
             let close = NSButton(image: NSImage(systemSymbolName: "xmark", accessibilityDescription: String(localized: "Close Tab", table: "Fork"))!, target: self, action: #selector(self.closeTab))
             close.tag = index
             close.isBordered = false
-            let tab = NSStackView(views: [button, close])
-            tab.spacing = 2
-            self.stack.addArrangedSubview(tab)
-            button.widthAnchor.constraint(lessThanOrEqualToConstant: 240).isActive = true
+            let tab = WorkspaceTabItem(title: button, close: close, selected: document === self.workspace.selected)
+            stack.addArrangedSubview(tab)
+            tab.heightAnchor.constraint(equalTo: stack.heightAnchor).isActive = true
         }
-        self.stack.setFrameSize(NSSize(width: self.stack.fittingSize.width, height: 30))
+        self.strip.needsLayout = true
     }
 
     @objc private func selectTab(_ sender: NSButton) {
@@ -358,5 +338,94 @@ import LineEnding
 
         self.workspace.selectTab(at: sender.tag)
         self.workspace.closeTab(sender)
+    }
+}
+
+/// Fill the titlebar with tabs while reserving a permanent trailing new-tab button.
+@MainActor private final class WorkspaceTabStrip: NSView {
+    let stack = NSStackView()
+    private let scroll = NSScrollView()
+    private let plus: NSButton
+
+    init(plus: NSButton) {
+
+        self.plus = plus
+        super.init(frame: NSRect(x: 0, y: 0, width: 640, height: 32))
+        self.autoresizingMask = [.width]
+        self.stack.orientation = .horizontal
+        self.stack.distribution = .fillEqually
+        self.stack.spacing = 0
+        self.scroll.drawsBackground = false
+        self.scroll.hasHorizontalScroller = false
+        self.scroll.documentView = self.stack
+        self.addSubview(self.scroll)
+        self.addSubview(plus)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layout() {
+
+        super.layout()
+        let width = max(0, self.bounds.width - 36)
+        self.scroll.frame = NSRect(x: 0, y: 0, width: width, height: self.bounds.height)
+        self.plus.frame = NSRect(x: width + 2, y: 0, width: 32, height: self.bounds.height)
+        self.stack.frame = NSRect(x: 0, y: 0, width: max(width, CGFloat(self.stack.arrangedSubviews.count) * 140), height: self.bounds.height)
+    }
+}
+
+/// The close control belongs inside the tab, on its leading edge, as in AppKit tabs.
+@MainActor private final class WorkspaceTabItem: NSView {
+    private let title: NSButton
+    private let close: NSButton
+    private let selected: Bool
+    private var tracking: NSTrackingArea?
+
+    init(title: NSButton, close: NSButton, selected: Bool) {
+
+        self.title = title
+        self.close = close
+        self.selected = selected
+        super.init(frame: .zero)
+        self.addSubview(title)
+        self.addSubview(close)
+        self.close.isHidden = !selected
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layout() {
+
+        super.layout()
+        self.title.frame = self.bounds.insetBy(dx: 28, dy: 0)
+        self.close.frame = NSRect(x: 5, y: (self.bounds.height - 22) / 2, width: 22, height: 22)
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+
+        (self.selected ? NSColor.controlBackgroundColor : NSColor.quaternaryLabelColor.withAlphaComponent(0.08)).setFill()
+        self.bounds.fill()
+        NSColor.separatorColor.setFill()
+        NSRect(x: self.bounds.maxX - 1, y: 0, width: 1, height: self.bounds.height).fill()
+        NSRect(x: 0, y: 0, width: self.bounds.width, height: 1).fill()
+    }
+
+    override func updateTrackingAreas() {
+
+        super.updateTrackingAreas()
+        if let tracking { self.removeTrackingArea(tracking) }
+        let tracking = NSTrackingArea(rect: .zero, options: [.activeAlways, .mouseEnteredAndExited, .inVisibleRect], owner: self, userInfo: nil)
+        self.addTrackingArea(tracking)
+        self.tracking = tracking
+    }
+
+    override func mouseEntered(with event: NSEvent) { self.close.isHidden = false }
+    override func mouseExited(with event: NSEvent) { self.close.isHidden = !self.selected }
+
+    override func mouseDown(with event: NSEvent) {
+
+        NSApp.sendAction(self.title.action!, to: self.title.target, from: self.title)
     }
 }

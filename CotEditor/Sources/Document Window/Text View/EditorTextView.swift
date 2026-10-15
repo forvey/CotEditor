@@ -460,7 +460,11 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
         }
         
         self.isPerformingRectangularSelection = false
-        if event.clickCount == 2, !isDragged { self.sqlCompanion.doubleClick(at: self.selectedRange.location) }
+        // A double-click is identified by the event, even when the pointer moves
+        // slightly while AppKit selects the word.
+        if event.clickCount == 2 {
+            self.sqlCompanion.doubleClick(at: self.characterIndexForInsertion(at: self.mouseDownPoint))
+        }
     }
     
     
