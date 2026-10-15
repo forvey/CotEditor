@@ -5,6 +5,7 @@ public struct Draft: Codable, Equatable, Sendable, Identifiable {
     public var id: UUID
     public var text: String
     public var title: String
+    public var workspaceDraftName: String?
     public var fileURL: URL?
     public var bookmark: Data?
     public var fileModificationDate: Date?

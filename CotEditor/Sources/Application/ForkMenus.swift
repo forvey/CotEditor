@@ -43,7 +43,7 @@ import CustomizationCore
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
 
         if menuItem.action == #selector(self.toggleFavorite(_:)) {
-            return DraftWorkspace.shared.selected?.fileURL != nil && self.decodingError == nil
+            return self.favoriteDocument(for: menuItem)?.fileURL != nil && self.decodingError == nil
         }
         return self.decodingError == nil
     }
@@ -52,12 +52,7 @@ import CustomizationCore
 
         guard menu === self.favoritesMenu else { return }
         menu.removeAllItems()
-        let url = DraftWorkspace.shared.selected?.fileURL?.standardizedFileURL
-        let existing = self.favorites.files.first { $0.url == url }
-        let toggle = NSMenuItem(title: existing == nil ? String(localized: "Add Current File to Favorites", table: "Fork") : String(localized: "Remove Current File from Favorites", table: "Fork"), action: #selector(self.toggleFavorite(_:)), keyEquivalent: "")
-        toggle.target = self
-        toggle.isEnabled = url != nil && self.decodingError == nil
-        menu.addItem(toggle)
+        menu.addItem(self.favoriteItem(for: nil))
         menu.addItem(.separator())
         if self.favorites.files.isEmpty {
             let empty = NSMenuItem(title: String(localized: "No Favorite Files", table: "Fork"), action: nil, keyEquivalent: "")
@@ -85,9 +80,44 @@ import CustomizationCore
         }
     }
 
-    @objc private func toggleFavorite(_ sender: Any?) {
+    func tabMenu(for document: Document) -> NSMenu {
 
-        guard let url = DraftWorkspace.shared.selected?.fileURL?.standardizedFileURL else { return }
+        let menu = NSMenu()
+        menu.addItem(self.favoriteItem(for: document))
+        return menu
+    }
+
+    private func favoriteItem(for document: Document?) -> NSMenuItem {
+
+        let url = (document ?? DraftWorkspace.shared.selected)?.fileURL?.standardizedFileURL
+        let isFavorite = self.favorites.files.contains { $0.url == url }
+        let title: String
+        if document != nil {
+            title = if url == nil {
+                String(localized: "Save the file before adding to Favorites", table: "Fork")
+            } else if isFavorite {
+                String(localized: "Remove from Favorites", table: "Fork")
+            } else {
+                String(localized: "Add to Favorites", table: "Fork")
+            }
+        } else {
+            title = isFavorite ? String(localized: "Remove Current File from Favorites", table: "Fork") : String(localized: "Add Current File to Favorites", table: "Fork")
+        }
+        let item = NSMenuItem(title: title, action: #selector(self.toggleFavorite(_:)), keyEquivalent: "")
+        item.target = self
+        item.representedObject = document
+        item.isEnabled = url != nil && self.decodingError == nil
+        return item
+    }
+
+    private func favoriteDocument(for item: NSMenuItem) -> Document? {
+
+        (item.representedObject as? Document) ?? DraftWorkspace.shared.selected
+    }
+
+    @objc private func toggleFavorite(_ sender: NSMenuItem) {
+
+        guard self.decodingError == nil, let url = self.favoriteDocument(for: sender)?.fileURL?.standardizedFileURL else { return }
         if let file = self.favorites.files.first(where: { $0.url == url }) { self.favorites.remove(id: file.id) }
         else {
             let bookmark = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)

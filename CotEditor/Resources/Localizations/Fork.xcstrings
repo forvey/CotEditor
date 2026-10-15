@@ -154,6 +154,39 @@
           }
         }
       }
+    },
+    "Add to Favorites": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏文件"
+          }
+        }
+      }
+    },
+    "Remove from Favorites": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消收藏"
+          }
+        }
+      }
+    },
+    "Save the file before adding to Favorites": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏文件（需先保存）"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

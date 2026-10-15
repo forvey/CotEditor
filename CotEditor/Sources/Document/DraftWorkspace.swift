@@ -39,6 +39,7 @@ import LineEnding
 
         self.restoreIfNeeded()
         if !self.documents.contains(document) {
+            self.assignDraftName(to: document)
             self.documents.append(document)
             self.identities[ObjectIdentifier(document)] = self.identities[ObjectIdentifier(document)] ?? UUID()
             document.isTransient = false
@@ -237,7 +238,32 @@ import LineEnding
                           lineEnding: document.lineEnding.string, syntax: document.syntaxName,
                           isEdited: document.isDocumentEdited, selection: document.textView?.selectedRange() ?? NSRange(location: 0, length: 0))
         draft.fileModificationDate = self.modificationDates[key]
+        draft.workspaceDraftName = document.fileURL == nil ? document.workspaceDraftName : nil
         return draft
+    }
+
+    private func assignDraftName(to document: Document) {
+
+        guard document.fileURL == nil else { return }
+        let base = document.defaultDraftName()
+        let title = document.displayName ?? base
+        // Older sessions used AppKit's increasing counter. Migrate only default
+        // draft titles; preserve custom names and recovered file names.
+        let isDefault = [base, "Untitled", "未命名"].contains { prefix in
+            guard title.hasPrefix(prefix) else { return false }
+            let suffix = title.dropFirst(prefix.count).trimmingCharacters(in: .whitespaces)
+            return suffix.isEmpty || (!suffix.isEmpty && suffix.allSatisfy(\.isNumber))
+        }
+        guard document.workspaceDraftName != nil || isDefault else { return }
+        let occupied = Set(self.documents.filter { $0.fileURL == nil }.compactMap(\.displayName))
+        if let saved = document.workspaceDraftName, !occupied.contains(saved) { return }
+        var number = 1
+        var name = base
+        while occupied.contains(name) {
+            number += 1
+            name = "\(base) \(number)"
+        }
+        document.workspaceDraftName = name
     }
 
     private func restore(_ draft: Draft) {
@@ -264,7 +290,11 @@ import LineEnding
         } else {
             document = Document()
             document.fileType = "public.plain-text"
-            document.displayName = draft.title
+            if let name = draft.workspaceDraftName {
+                document.workspaceDraftName = name
+            } else {
+                document.displayName = draft.title
+            }
             document.restoreDraft(draft)
         }
         let key = ObjectIdentifier(document)
@@ -313,16 +343,16 @@ import LineEnding
         stack.arrangedSubviews.forEach { stack.removeArrangedSubview($0); $0.removeFromSuperview() }
         for (index, document) in self.workspace.documents.enumerated() {
             let title = (document.isDocumentEdited ? "• " : "") + (document.displayName ?? "Untitled")
-            let button = NSButton(title: title, target: self, action: #selector(self.selectTab))
+            let button = WorkspaceTabButton(title: title, target: self, action: #selector(self.selectTab))
             button.tag = index
             button.isBordered = false
             button.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
             button.cell?.lineBreakMode = .byTruncatingMiddle
             button.toolTip = document.fileURL?.path ?? document.displayName
-            let close = NSButton(image: NSImage(systemSymbolName: "xmark", accessibilityDescription: String(localized: "Close Tab", table: "Fork"))!, target: self, action: #selector(self.closeTab))
+            let close = WorkspaceTabButton(image: NSImage(systemSymbolName: "xmark", accessibilityDescription: String(localized: "Close Tab", table: "Fork"))!, target: self, action: #selector(self.closeTab))
             close.tag = index
             close.isBordered = false
-            let tab = WorkspaceTabItem(title: button, close: close, selected: document === self.workspace.selected)
+            let tab = WorkspaceTabItem(title: button, close: close, document: document, selected: document === self.workspace.selected)
             stack.addArrangedSubview(tab)
             tab.heightAnchor.constraint(equalTo: stack.heightAnchor).isActive = true
         }
@@ -380,13 +410,15 @@ import LineEnding
     private let title: NSButton
     private let close: NSButton
     private let selected: Bool
+    private weak var document: Document?
     private var tracking: NSTrackingArea?
 
-    init(title: NSButton, close: NSButton, selected: Bool) {
+    init(title: NSButton, close: NSButton, document: Document, selected: Bool) {
 
         self.title = title
         self.close = close
         self.selected = selected
+        self.document = document
         super.init(frame: .zero)
         self.addSubview(title)
         self.addSubview(close)
@@ -424,8 +456,20 @@ import LineEnding
     override func mouseEntered(with event: NSEvent) { self.close.isHidden = false }
     override func mouseExited(with event: NSEvent) { self.close.isHidden = !self.selected }
 
+    override func menu(for event: NSEvent) -> NSMenu? {
+
+        self.document.map { ForkMenus.shared.tabMenu(for: $0) }
+    }
+
     override func mouseDown(with event: NSEvent) {
 
         NSApp.sendAction(self.title.action!, to: self.title.target, from: self.title)
+    }
+}
+
+@MainActor private final class WorkspaceTabButton: NSButton {
+    override func menu(for event: NSEvent) -> NSMenu? {
+
+        self.superview?.menu(for: event)
     }
 }

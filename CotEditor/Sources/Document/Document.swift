@@ -72,6 +72,7 @@ extension NSTextView: EditorCounter.Source { }
     
     @objc var isEditable = true  { didSet { self.invalidateRestorableState() } }  // @objc for AppleScript support
     var isTransient = false  // untitled & empty document that was created automatically
+    var workspaceDraftName: String?
     
     nonisolated var isVerticalText: Bool {
         
@@ -81,6 +82,13 @@ extension NSTextView: EditorCounter.Source { }
     private let _isVerticalText: Mutex<Bool> = .init(false)
     
     
+    override var displayName: String! {
+
+        get { self.fileURL == nil ? (self.workspaceDraftName ?? super.displayName) : super.displayName }
+        set { self.workspaceDraftName = nil; super.displayName = newValue }
+    }
+
+
     // MARK: Readonly Properties
     
     let textStorage = NSTextStorage()
