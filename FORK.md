@@ -2,6 +2,8 @@
 
 此 fork 将编辑功能放在 CotEditor 本体中，不依赖额外 App、鼠标监听器、辅助功能权限或外部脚本。
 
+开发交接、实现入口、历史踩坑、设计结论及验证边界见 [开发记录](docs/FORK_DEVELOPMENT.md)；后续修改遵循 [迭代约定](AGENTS.md)。正式工作目录为 `~/workspace/CotEditor`，远端为 `forvey/CotEditor`。
+
 ## 使用
 
 - **⌥⌘L**：全文 JSON / PostgreSQL 格式化与压缩切换。可先选择 JSON 或 SQL 语法；纯文本也会识别常见语句。保留 SQL 大小写、字符串、注释和 JSON 数字的原始拼写。压缩 SQL 时，每条顶层语句单独一行；行注释和字符串内部的换行保留。不能安全转换时不替换文本。格式化使用标准编辑接口，可一次撤销。

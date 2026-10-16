@@ -1,5 +1,7 @@
 # CotEditor
 
+Forvey 定制版：参见 [功能与使用说明](FORK.md) 和 [开发交接记录](docs/FORK_DEVELOPMENT.md)。
+
 CotEditor is a lightweight plain text editor designed for macOS. The project aims to provide a general plain text editor for everyone with an intuitive macOS-native user interface.
 
 - __Requirement__: macOS Tahoe 26 or later
