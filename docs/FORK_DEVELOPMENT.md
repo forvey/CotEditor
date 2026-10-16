@@ -169,6 +169,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 | SwiftPM 首次获取依赖耗时、网络或锁定版本解析失败 | 保留锁定版本，先检查包解析日志及网络；临时代理、镜像和下载脚本不成为项目永久依赖，使用后还原 Git 配置 |
 | 构建自动抽取字符串导致无关 `.xcstrings` 改动 | 提交前检查差异，只保留与本次功能相关的本地化更新 |
 | Git 能公开拉取但不能 push | 读取公开仓库不代表已认证；系统已有 `osxkeychain` helper，但还需要钥匙串中有可用 GitHub 凭据。不能用 GitHub 账户密码替代 HTTPS 令牌，也不把 token 写到 remote URL 或仓库 |
+| HTTPS 推送提示 `Send failure: Broken pipe` | 2026-10-17 实测直连 GitHub 超时，使用本机系统已配置的 HTTP 代理则成功访问公开 Git 服务。Git 不一定跟随 macOS 系统代理；先对比直连与现有代理，再用 `git -c http.proxy=http://127.0.0.1:端口 …` 对单次命令指定代理，不固化全局代理，也不关闭 TLS 校验。此错误本身不证明令牌无效；失败的请求可能尚未把凭据保存到钥匙串 |
 | `git status` 显示干净或本地 ahead | 只说明本地工作树和提交状态，不能证明远端已有代码；以 `git ls-remote` 校验 |
 
 沙盒、插件或安装问题应先看具体错误，不能反复加无效参数、修改全局工具链或安装新工具。当前环境与早期沙盒环境可能不同，历史失败只作为排障线索。
